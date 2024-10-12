@@ -26,37 +26,45 @@ function log(level, message) {
     (levels[level] || console.log)(`[${level.toUpperCase()}] ${message}`);
 }
 
-// Function to update charts
 function updateCharts(distance, temperature) {
     const timestamp = new Date().toLocaleTimeString();
 
-    // Update distance chart
-    if (window.distanceChart) {
-        window.distanceChart.data.labels.push(timestamp);
-        window.distanceChart.data.datasets[0].data.push(parseFloat(distance));
-        
-        if (window.distanceChart.data.labels.length > 20) {
-            window.distanceChart.data.labels.shift();
-            window.distanceChart.data.datasets[0].data.shift();
+    try {
+        // Update distance chart
+        if (window.distanceChart) {
+            window.distanceChart.data.labels.push(timestamp);
+            window.distanceChart.data.datasets[0].data.push(parseFloat(distance));
+            
+            if (window.distanceChart.data.labels.length > 20) {
+                window.distanceChart.data.labels.shift();
+                window.distanceChart.data.datasets[0].data.shift();
+            }
+            
+            window.distanceChart.update();
+            console.log('Distance chart updated:', distance);
+        } else {
+            console.warn('Distance chart not initialized');
         }
-        
-        window.distanceChart.update();
-    }
 
-    // Update temperature chart
-    if (window.temperatureChart) {
-        window.temperatureChart.data.labels.push(timestamp);
-        window.temperatureChart.data.datasets[0].data.push(parseFloat(temperature));
-        
-        if (window.temperatureChart.data.labels.length > 20) {
-            window.temperatureChart.data.labels.shift();
-            window.temperatureChart.data.datasets[0].data.shift();
+        // Update temperature chart
+        if (window.temperatureChart) {
+            window.temperatureChart.data.labels.push(timestamp);
+            window.temperatureChart.data.datasets[0].data.push(parseFloat(temperature));
+            
+            if (window.temperatureChart.data.labels.length > 20) {
+                window.temperatureChart.data.labels.shift();
+                window.temperatureChart.data.datasets[0].data.shift();
+            }
+            
+            window.temperatureChart.update();
+            console.log('Temperature chart updated:', temperature);
+        } else {
+            console.warn('Temperature chart not initialized');
         }
-        
-        window.temperatureChart.update();
+    } catch (error) {
+        console.error('Error updating charts:', error);
     }
 }
-
 // Establish a persistent connection to the server
 function startClient() {
     client = new net.Socket();
@@ -114,7 +122,7 @@ function processData(data) {
         
                 // Update charts
                 updateCharts(distance.trim(), temperature.trim());
-                
+
                 // Set total expected bytes
                 totalExpectedBytes = headerEndIndex + 2 + imageSize; // +2 for '\n\n'
 
