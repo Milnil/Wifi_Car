@@ -26,6 +26,37 @@ function log(level, message) {
     (levels[level] || console.log)(`[${level.toUpperCase()}] ${message}`);
 }
 
+// Function to update charts
+function updateCharts(distance, temperature) {
+    const timestamp = new Date().toLocaleTimeString();
+
+    // Update distance chart
+    if (window.distanceChart) {
+        window.distanceChart.data.labels.push(timestamp);
+        window.distanceChart.data.datasets[0].data.push(parseFloat(distance));
+        
+        if (window.distanceChart.data.labels.length > 20) {
+            window.distanceChart.data.labels.shift();
+            window.distanceChart.data.datasets[0].data.shift();
+        }
+        
+        window.distanceChart.update();
+    }
+
+    // Update temperature chart
+    if (window.temperatureChart) {
+        window.temperatureChart.data.labels.push(timestamp);
+        window.temperatureChart.data.datasets[0].data.push(parseFloat(temperature));
+        
+        if (window.temperatureChart.data.labels.length > 20) {
+            window.temperatureChart.data.labels.shift();
+            window.temperatureChart.data.datasets[0].data.shift();
+        }
+        
+        window.temperatureChart.update();
+    }
+}
+
 // Establish a persistent connection to the server
 function startClient() {
     client = new net.Socket();
@@ -70,17 +101,20 @@ function processData(data) {
                     client.destroy();
                     return;
                 }
-
+        
                 log('info', `Parsed header: Car Status='${carStatus}', Image Size=${imageSize} bytes`);
-
+        
                 // Extract car status
                 let [direction, temperature, distance] = carStatus.split(',');
-
+        
                 // Update UI
                 document.getElementById("direction").innerText = direction || "N/A";
                 document.getElementById("distance").innerText = (distance ? distance.trim() + " cm" : "0.0 cm");
                 document.getElementById("temperature").innerText = (temperature ? temperature.trim() + " °C" : "0.0 °C");
-
+        
+                // Update charts
+                updateCharts(distance.trim(), temperature.trim());
+                
                 // Set total expected bytes
                 totalExpectedBytes = headerEndIndex + 2 + imageSize; // +2 for '\n\n'
 

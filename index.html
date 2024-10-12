@@ -1,61 +1,66 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <meta charset="UTF-8">
-    <style>
-        .container {
-            display: flex;
-        }
-    </style>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
     <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .chart-container {
+            width: 100%;
+            height: 300px;
+        }
+    </style>
     <script src="./index.js"></script>
-
 </head>
-
 <body>
     <div class="container">
-
-        <div class="jumbotron">
-            <h2>CS498: IoT -- Lab 2</h2>
-
-            <!-- <video class="center" width="600" height="400" controls>
-        <source src="samplevid.mp4" type="video/mp4">
-          Your browser does not support the video tag.
-      </video> -->
-        <img id="videoFeed" alt="Video Feed" width="320" height="240">
-
+        <h2 class="text-center">CS498: IoT -- Lab 2</h2>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <canvas id="distanceChart"></canvas>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <canvas id="temperatureChart"></canvas>
+                </div>
+            </div>
         </div>
 
-    </div>
-
-    <div class="row">
-        <div class="container">
-            <div class="jumbotron text-center col-md-6">
-                <span>&nbsp;&nbsp;</span>
-                <span id="upArrow" style='font-size:50px; color:grey;'>&#8679;</span>
-                <br>
-                <span id="leftArrow" style='font-size:45px; color:grey;'>&#8678;</span>
-                <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
-                <span id="rightArrow" style='font-size:45px; color:grey;'>&#8680;</span>
-                <br>
-                <span>&nbsp;&nbsp;</span>
-                <span id="downArrow" style='font-size:50px; color:grey;'>&#8681;</span>
+        <div class="row">
+            <div class="col-md-6">
+                <img id="videoFeed" alt="Video Feed" class="img-responsive center-block" style="max-width: 320px; max-height: 240px;">
             </div>
+            <div class="col-md-6">
+                <div class="text-center">
+                    <span>&nbsp;&nbsp;</span>
+                    <span id="upArrow" style='font-size:50px; color:grey;'>&#8679;</span>
+                    <br>
+                    <span id="leftArrow" style='font-size:45px; color:grey;'>&#8678;</span>
+                    <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                    <span id="rightArrow" style='font-size:45px; color:grey;'>&#8680;</span>
+                    <br>
+                    <span>&nbsp;&nbsp;</span>
+                    <span id="downArrow" style='font-size:50px; color:grey;'>&#8681;</span>
+                </div>
+            </div>
+        </div>
 
-            <div class="jumbotron text-left col-md-6">
-                <input id="message" type="text" placeholder="message to Pi" />
-                <button class="btn btn-success" onclick="update_data()">Submit</button>
+        <div class="row">
+            <div class="col-md-12">
+                <div class="form-group">
+                    <input id="message" type="text" class="form-control" placeholder="Message to Pi" />
+                    <button class="btn btn-success" onclick="update_data()">Submit</button>
+                </div>
                 <p>
-                    <span id="direction_dot" style="color:Green">&bull;</span> Car Direction: <span id="direction">
-                    </span>
+                    <span id="direction_dot" style="color:Green">&bull;</span> Car Direction: <span id="direction"></span>
                     <br>
-                    <span id="distance_dot" style="color:green">&bull;</span> Distance of Nearest Object</Object>: <span
-                        id="distance">0.0</span>
+                    <span id="distance_dot" style="color:green">&bull;</span> Distance of Nearest Object: <span id="distance">0.0</span>
                     <br>
-                    <span id="temprature_dot" style="color:green">&bull;</span> Temperature of the Pi: <span
-                        id="temperature">0.0</span>
+                    <span id="temprature_dot" style="color:green">&bull;</span> Temperature of the Pi: <span id="temperature">0.0</span>
                     <br>
                     Bluetooth return value: <span id="bluetooth"> </span>
                 </p>
@@ -63,6 +68,61 @@
         </div>
     </div>
 
-</body>
+    <script>
+        // Initialize charts when the document is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCharts();
+        });
 
+        function initializeCharts() {
+            // Distance Chart
+            const distanceCtx = document.getElementById('distanceChart').getContext('2d');
+            window.distanceChart = new Chart(distanceCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Distance (cm)',
+                        data: [],
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            // Temperature Chart
+            const temperatureCtx = document.getElementById('temperatureChart').getContext('2d');
+            window.temperatureChart = new Chart(temperatureCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Temperature (°C)',
+                        data: [],
+                        borderColor: 'rgb(255, 99, 132)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
 </html>
