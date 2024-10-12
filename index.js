@@ -4,35 +4,41 @@ document.onkeyup = resetKey;
 var server_port = 65432;
 var server_addr = "192.168.10.59";   // the IP address of your Raspberry PI
 
-function client(){
-    
+function client() {
     const net = require('net');
     var input = document.getElementById("message").value;
 
     const client = net.createConnection({ port: server_port, host: server_addr }, () => {
-        // 'connect' listener.
-        console.log('connected to server!');
-        // send the message
+        // Send the message to the server (if needed)
         client.write(`${input}\r\n`);
+        console.log('connected to server!');
     });
-    
-        client.on('error', (err) => {
+
+    client.on('error', (err) => {
         console.log(`Connection error: ${err.message}`);
     });
 
-    // get the data from the server
+    // Get the data from the server
     client.on('data', (data) => {
-        document.getElementById("bluetooth").innerHTML = data;
-        console.log(data.toString());
+        const response = data.toString();
+        console.log("Received from server:", response);
+
+        // Assuming server returns values as comma-separated "direction,speed,distance,temperature"
+        const [direction, distance, temperature] = response.split(',');
+
+        // Update the HTML with received values
+        document.getElementById("direction").innerText = direction || "N/A";
+        document.getElementById("distance").innerText = distance || "0.0";
+        document.getElementById("temperature").innerText = temperature || "0.0";
+
+        // Close the connection after receiving the data
         client.end();
         client.destroy();
     });
 
     client.on('end', () => {
-        console.log('disconnected from server');
+        console.log('Disconnected from server');
     });
-
-
 }
 
 // for detecting which key is been pressed w,a,s,d
@@ -59,14 +65,15 @@ function updateKey(event) {
 
 
 // reset the key to the start state 
-function resetKey(e) {
-
-    e = e || window.event;
-
+function resetKey(event) {
+    // Reset arrow colors
     document.getElementById("upArrow").style.color = "grey";
     document.getElementById("downArrow").style.color = "grey";
     document.getElementById("leftArrow").style.color = "grey";
     document.getElementById("rightArrow").style.color = "grey";
+    
+    // Send unique identifier to the server for no key pressed
+    send_data("0");
 }
 
 

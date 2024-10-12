@@ -38,6 +38,7 @@ class CombinedCar:
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.bind((self.host, self.port))
         self.server_socket.listen()
+        self.direction = None
         print(f"Server listening on {self.host}:{self.port}")
 
     def pulseIn(self, pin, level, timeOut):
@@ -69,25 +70,33 @@ class CombinedCar:
 
     def get_car_status(self):
         # Get the current car status including direction, temperature, and distance
-        direction = "Forward" if self.M > 30 else "Stopped"
+        direction = self.direction
         temperature = self.get_temperature()
         distance = self.get_distance()
-        return f"Direction: {direction}, Temperature: {temperature}C, Distance: {distance}cm"
+        return f"{direction}, {temperature}, {distance}"
 
     def handle_drive_command(self, command):
         # Handle the driving commands based on w/a/s/d
         if command == 'w':  # Move forward
             print("Moving forward")
+            self.direction = "forward"
             self.PWM.setMotorModel(1000, 1000, 1000, 1000)
         elif command == 's':  # Move backward
             print("Moving backward")
+            self.direction = "backward"
             self.PWM.setMotorModel(-1000, -1000, -1000, -1000)
         elif command == 'a':  # Turn left
             print("Turning left")
+            self.direction = "left"
             self.PWM.setMotorModel(-500, -500, 1500, 1500)
         elif command == 'd':  # Turn right
             print("Turning right")
+            self.direction = "right"
             self.PWM.setMotorModel(1500, 1500, -500, -500)
+        elif command == 'stop':
+            print("Stopping")
+            self.direction = "stopped"
+            self.PWM.setMotorModel(0, 0, 0, 0)
         else:
             print(f"Unknown command: {command}")
             # Stop the car if the command is not recognized
@@ -109,24 +118,20 @@ class CombinedCar:
                     '87': 'w',  # "W" key for moving forward
                     '83': 's',  # "S" key for moving backward
                     '65': 'a',  # "A" key for turning left
-                    '68': 'd'   # "D" key for turning right
+                    '68': 'd',   # "D" key for turning right
+                    '0': 'stop'
                 }
                 
                 # If the data is one of w/a/s/d, handle driving commands
-                if data in ['w', 'a', 's', 'd']:
-                    self.handle_drive_command(data)
+                if data:
+                    self.handle_drive_command(command_map[data])
                 else:
                     self.PWM.setMotorModel(0, 0, 0, 0)  # Stop if invalid command
 
-                # Check for obstacles
-                self.M = self.get_distance()
-                
-
                 # Send car status to the connected client
                 car_status = self.get_car_status()
-                client_socket.sendall(car_status.encode())
+                client_socket.sendall(car_status.encode('utf-8'))
                 print(f"Sent to client: {car_status}")
-                time.sleep(1)  # Delay between status updates
 
         except Exception as e:
             print(f"An error occurred: {e}")
