@@ -1,117 +1,191 @@
-document.onkeydown = updateKey;
-document.onkeyup = resetKey;
+// Assuming this code is part of your ElectronJS renderer process
+document.addEventListener("keydown", updateKey);
+document.addEventListener("keyup", resetKey);
 
-var server_port = 65432;
-var server_addr = "192.168.10.59";   // the IP address of your Raspberry PI
+const net = require('net'); // Make sure Node integration is enabled in Electron
 
-function client() {
-    const net = require('net');
-    var input = document.getElementById("message").value;
+var server_port = 65436;
+var server_addr = "192.168.10.59"; // the IP address of your Raspberry Pi
 
-    const client = net.createConnection({ port: server_port, host: server_addr }, () => {
-        // Send the message to the server (if needed)
-        client.write(`${input}\r\n`);
-        console.log('connected to server!');
+// Global variables
+let client = null;
+let dataBuffer = Buffer.alloc(0);
+let headerParsed = false;
+let imageSize = 0;
+let totalExpectedBytes = 0;
+
+// Logging function for consistency
+function log(level, message) {
+    const levels = {
+        'debug': console.debug,
+        'info': console.info,
+        'warn': console.warn,
+        'error': console.error
+    };
+    (levels[level] || console.log)(`[${level.toUpperCase()}] ${message}`);
+}
+
+// Establish a persistent connection to the server
+function startClient() {
+    client = new net.Socket();
+
+    client.connect(server_port, server_addr, () => {
+        log('info', 'Connected to server');
     });
 
-    client.on('error', (err) => {
-        console.log(`Connection error: ${err.message}`);
-    });
-
-    // Get the data from the server
     client.on('data', (data) => {
-        const response = data.toString();
-        console.log("Received from server:", response);
-
-        // Assuming server returns values as comma-separated "direction,speed,distance,temperature"
-        const [direction, distance, temperature] = response.split(',');
-
-        // Update the HTML with received values
-        document.getElementById("direction").innerText = direction || "N/A";
-        document.getElementById("distance").innerText = distance || "0.0";
-        document.getElementById("temperature").innerText = temperature || "0.0";
-
-        // Close the connection after receiving the data
-        //client.end();
-        //client.destroy();
+        log('debug', `Received data chunk of size ${data.length}`);
+        processData(data);
     });
 
     client.on('end', () => {
-        console.log('Disconnected from server');
-        client.end();
-        client.destroy();
+        log('info', 'Disconnected from server');
+    });
+
+    client.on('error', (err) => {
+        log('error', `Connection error: ${err.message}`);
     });
 }
 
-// for detecting which key is been pressed w,a,s,d
-function updateKey(event) {
-    // Use the event parameter directly
-    if (event.keyCode == '87') { // "W"
-        document.getElementById("upArrow").style.color = "green";
-        send_data("87");
+// Process incoming data from the server
+function processData(data) {
+    dataBuffer = Buffer.concat([dataBuffer, data]);
+
+    if (!headerParsed) {
+        // Check if header is complete (look for '\n\n')
+        let headerEndIndex = dataBuffer.indexOf('\n\n');
+        if (headerEndIndex !== -1) {
+            // Extract header
+            let headerBuffer = dataBuffer.slice(0, headerEndIndex);
+            let headerStr = headerBuffer.toString('utf-8');
+            // Parse header
+            let headerLines = headerStr.split('\n');
+            if (headerLines.length >= 2) {
+                let carStatus = headerLines[0];
+                let imageSizeStr = headerLines[1];
+                imageSize = parseInt(imageSizeStr);
+                if (isNaN(imageSize)) {
+                    log('error', 'Invalid image size in header');
+                    client.destroy();
+                    return;
+                }
+
+                log('info', `Parsed header: Car Status='${carStatus}', Image Size=${imageSize} bytes`);
+
+                // Extract car status
+                let [direction, temperature, distance] = carStatus.split(',');
+
+                // Update UI
+                document.getElementById("direction").innerText = direction || "N/A";
+                document.getElementById("distance").innerText = (distance ? distance.trim() + " cm" : "0.0 cm");
+                document.getElementById("temperature").innerText = (temperature ? temperature.trim() + " °C" : "0.0 °C");
+
+                // Set total expected bytes
+                totalExpectedBytes = headerEndIndex + 2 + imageSize; // +2 for '\n\n'
+
+                headerParsed = true;
+                dataBuffer = dataBuffer.slice(headerEndIndex + 2); // Remove header from buffer
+            } else {
+                // Incomplete header, wait for more data
+                log('warn', 'Incomplete header received, waiting for more data');
+                return;
+            }
+        } else {
+            // Header not complete, wait for more data
+            log('debug', 'Header not complete, waiting for more data');
+            return;
+        }
     }
-    else if (event.keyCode == '83') { // "S"
-        document.getElementById("downArrow").style.color = "green";
-        send_data("83");
-    }
-    else if (event.keyCode == '65') { // "A"
-        document.getElementById("leftArrow").style.color = "green";
-        send_data("65");
-    }
-    else if (event.keyCode == '68') { // "D"
-        document.getElementById("rightArrow").style.color = "green";
-        send_data("68");
+
+    // Check if we have received all expected data
+    if (dataBuffer.length >= imageSize) {
+        // Extract image data
+        let imageDataBuffer = dataBuffer.slice(0, imageSize);
+
+        // Display the image
+        const base64Image = imageDataBuffer.toString('base64');
+        document.getElementById('videoFeed').src = 'data:image/jpeg;base64,' + base64Image;
+        log('info', 'Image updated on the page');
+
+        // Remove the processed image data from the buffer
+        dataBuffer = dataBuffer.slice(imageSize);
+
+        // Reset for next message
+        headerParsed = false;
+        imageSize = 0;
+        totalExpectedBytes = 0;
+
+        // If there's more data in the buffer, process it
+        if (dataBuffer.length > 0) {
+            log('debug', `Data buffer has ${dataBuffer.length} bytes remaining, processing next message`);
+            processData(Buffer.alloc(0)); // Pass an empty buffer to continue processing
+        }
+    } else {
+        log('debug', `Waiting for more image data. Received ${dataBuffer.length}/${imageSize} bytes`);
     }
 }
 
+// For detecting which key is being pressed: W, A, S, D
+function updateKey(event) {
+    // Use event.code to detect the key
+    switch (event.code) {
+        case "KeyW":
+            document.getElementById("upArrow").style.color = "green";
+            send_data("87"); // Send W key code
+            break;
+        case "KeyS":
+            document.getElementById("downArrow").style.color = "green";
+            send_data("83"); // Send S key code
+            break;
+        case "KeyA":
+            document.getElementById("leftArrow").style.color = "green";
+            send_data("65"); // Send A key code
+            break;
+        case "KeyD":
+            document.getElementById("rightArrow").style.color = "green";
+            send_data("68"); // Send D key code
+            break;
+        default:
+            // Do nothing for other keys
+            break;
+    }
+}
 
-
-// reset the key to the start state 
+// Reset the key to the start state
 function resetKey(event) {
     // Reset arrow colors
     document.getElementById("upArrow").style.color = "grey";
     document.getElementById("downArrow").style.color = "grey";
     document.getElementById("leftArrow").style.color = "grey";
     document.getElementById("rightArrow").style.color = "grey";
-    
+
     // Send unique identifier to the server for no key pressed
-    console.log("Stopping")
+    log('info', "Stopping");
     send_data("0");
 }
 
-
-// update data for every 50ms
-function update_data(){
-    setInterval(function(){
-        // get image from python server
-        client();
-    }, 50);
-}
-
-
+// Function to send data to the server
 function send_data(message) {
-    const net = require('net');
-    const client = net.createConnection({ port: server_port, host: server_addr }, () => {
-        // Send the message to the server
-        client.write(`${message}\r\n`);
-        console.log('Sent to server:', message);
-    });
-
-    client.on('data', (data) => {
-        document.getElementById("bluetooth").innerHTML = data;
-        console.log('Received from server:', data.toString());
-        //client.end();
-        //client.destroy();
-    });
-
-    client.on('end', () => {
-        console.log('Disconnected from server');
-        client.end();
-        client.destroy();
-    });
-
-    client.on('error', (err) => {
-        console.log('Connection error:', err.message);
-    });
+    if (client && !client.destroyed) {
+        try {
+            client.write(`${message}\n`);
+            log('info', `Sent to server: ${message}`);
+        } catch (err) {
+            log('error', `Error sending data: ${err.message}`);
+        }
+    } else {
+        log('warn', 'Client is not connected. Attempting to reconnect...');
+        startClient();
+        setTimeout(() => {
+            if (client && !client.destroyed) {
+                client.write(`${message}\n`);
+                log('info', `Sent to server after reconnect: ${message}`);
+            } else {
+                log('error', 'Failed to reconnect to server');
+            }
+        }, 1000); // Wait for connection to establish
+    }
 }
 
+// Start the client connection when the application loads
+startClient();
