@@ -4,7 +4,7 @@ document.addEventListener("keyup", resetKey);
 
 const net = require('net'); // Make sure Node integration is enabled in Electron
 
-var server_port = 65436;
+var server_port = 65434;
 var server_addr = "192.168.10.59"; // the IP address of your Raspberry Pi
 
 // Global variables
@@ -13,6 +13,7 @@ let dataBuffer = Buffer.alloc(0);
 let headerParsed = false;
 let imageSize = 0;
 let totalExpectedBytes = 0;
+let keyPressed = false; // Tracks if any key is pressed
 
 // Logging function for consistency
 function log(level, message) {
@@ -127,6 +128,7 @@ function processData(data) {
 
 // For detecting which key is being pressed: W, A, S, D
 function updateKey(event) {
+    keyPressed = true; // Set keyPressed to true when a key is pressed
     // Use event.code to detect the key
     switch (event.code) {
         case "KeyW":
@@ -159,10 +161,15 @@ function resetKey(event) {
     document.getElementById("leftArrow").style.color = "grey";
     document.getElementById("rightArrow").style.color = "grey";
 
-    // Send unique identifier to the server for no key pressed
-    log('info', "Stopping");
-    send_data("0");
+    keyPressed = false; // Set keyPressed to false when no keys are pressed
 }
+
+// Continuously send "0" if no key is pressed
+setInterval(() => {
+    if (!keyPressed) {
+        send_data("0"); // Send "0" continuously when no key is pressed
+    }
+}, 100); // You can adjust the interval time (100 ms in this case)
 
 // Function to send data to the server
 function send_data(message) {
