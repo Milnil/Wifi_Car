@@ -32,12 +32,14 @@ function client() {
         document.getElementById("temperature").innerText = temperature || "0.0";
 
         // Close the connection after receiving the data
-        client.end();
-        client.destroy();
+        //client.end();
+        //client.destroy();
     });
 
     client.on('end', () => {
         console.log('Disconnected from server');
+        client.end();
+        client.destroy();
     });
 }
 
@@ -73,6 +75,7 @@ function resetKey(event) {
     document.getElementById("rightArrow").style.color = "grey";
     
     // Send unique identifier to the server for no key pressed
+    console.log("Stopping")
     send_data("0");
 }
 
@@ -97,12 +100,14 @@ function send_data(message) {
     client.on('data', (data) => {
         document.getElementById("bluetooth").innerHTML = data;
         console.log('Received from server:', data.toString());
-        client.end();
-        client.destroy();
+        //client.end();
+        //client.destroy();
     });
 
     client.on('end', () => {
         console.log('Disconnected from server');
+        client.end();
+        client.destroy();
     });
 
     client.on('error', (err) => {

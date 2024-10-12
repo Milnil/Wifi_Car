@@ -132,7 +132,6 @@ class CombinedCar:
                 car_status = self.get_car_status()
                 client_socket.sendall(car_status.encode('utf-8'))
                 print(f"Sent to client: {car_status}")
-
         except Exception as e:
             print(f"An error occurred: {e}")
         finally:
