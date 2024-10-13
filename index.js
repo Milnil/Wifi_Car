@@ -32,30 +32,47 @@ function updateCharts(distance, temperature) {
     try {
         // Update distance chart
         if (window.distanceChart) {
-            window.distanceChart.data.labels.push(timestamp);
-            window.distanceChart.data.datasets[0].data.push(parseFloat(distance));
+            // Copy the current labels and data
+            const updatedDistanceLabels = [...window.distanceChart.data.labels, timestamp];
+            const updatedDistanceData = [...window.distanceChart.data.datasets[0].data, parseFloat(distance)];
             
-            if (window.distanceChart.data.labels.length > 20) {
-                window.distanceChart.data.labels.shift();
-                window.distanceChart.data.datasets[0].data.shift();
-            }
-            
+            // Ensure the length of the arrays doesn't exceed 20
+            const maxLength = 20;
+            const finalDistanceLabels = updatedDistanceLabels.length > maxLength
+                ? updatedDistanceLabels.slice(-maxLength)   // Keep only the last 20 labels
+                : updatedDistanceLabels;
+            const finalDistanceData = updatedDistanceData.length > maxLength
+                ? updatedDistanceData.slice(-maxLength)     // Keep only the last 20 data points
+                : updatedDistanceData;
+    
+            // Apply the changes back to the chart
+            window.distanceChart.data.labels = finalDistanceLabels;
+            window.distanceChart.data.datasets[0].data = finalDistanceData;
+    
             window.distanceChart.update();
             console.log('Distance chart updated:', distance);
         } else {
             console.warn('Distance chart not initialized');
         }
-
+    
         // Update temperature chart
         if (window.temperatureChart) {
-            window.temperatureChart.data.labels.push(timestamp);
-            window.temperatureChart.data.datasets[0].data.push(parseFloat(temperature));
+            // Copy the current labels and data
+            const updatedTemperatureLabels = [...window.temperatureChart.data.labels, timestamp];
+            const updatedTemperatureData = [...window.temperatureChart.data.datasets[0].data, parseFloat(temperature)];
             
-            if (window.temperatureChart.data.labels.length > 20) {
-                window.temperatureChart.data.labels.shift();
-                window.temperatureChart.data.datasets[0].data.shift();
-            }
-            
+            // Ensure the length of the arrays doesn't exceed 20
+            const finalTemperatureLabels = updatedTemperatureLabels.length > maxLength
+                ? updatedTemperatureLabels.slice(-maxLength)   // Keep only the last 20 labels
+                : updatedTemperatureLabels;
+            const finalTemperatureData = updatedTemperatureData.length > maxLength
+                ? updatedTemperatureData.slice(-maxLength)     // Keep only the last 20 data points
+                : updatedTemperatureData;
+    
+            // Apply the changes back to the chart
+            window.temperatureChart.data.labels = finalTemperatureLabels;
+            window.temperatureChart.data.datasets[0].data = finalTemperatureData;
+    
             window.temperatureChart.update();
             console.log('Temperature chart updated:', temperature);
         } else {
@@ -65,6 +82,7 @@ function updateCharts(distance, temperature) {
         console.error('Error updating charts:', error);
     }
 }
+
 // Establish a persistent connection to the server
 function startClient() {
     client = new net.Socket();
