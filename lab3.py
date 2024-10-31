@@ -13,6 +13,7 @@ import cv2
 import logging
 import io
 from PIL import Image
+import subprocess  
 
 
 # Configure logging
@@ -20,6 +21,29 @@ logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
+
+def scan_access_points(limit=5):
+    try:
+        # Run the iwlist scan command
+        result = subprocess.run(
+            ["sudo", "iwlist", "wlan0", "scan"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+
+        # Parse the output to find access points
+        output = result.stdout
+        access_points = re.findall(r"Cell \d+ - Address: ([\w:]+).*?ESSID:\"([^\"]*)\"", output, re.DOTALL)
+
+        # Print only the specified number of access points
+        for i, (address, essid) in enumerate(access_points[:limit]):
+            print(f"Access Point {i + 1}:")
+            print(f"  MAC Address: {address}")
+            print(f"  ESSID: {essid}\n")
+
+    except subprocess.CalledProcessError as e:
+        print(f"An error occurred: {e.stderr}")
 
 class CombinedCar:
     def __init__(self, host="192.168.10.59", port=65434):
@@ -132,6 +156,13 @@ class CombinedCar:
         logging.debug(f"Car status: {car_status}")
         return car_status
 
+    def handle_command(self, command):
+        if command == "scan":
+            logging.info("Scanning for WiFi access points")
+            scan_access_points(limit=5)
+        else:
+            self.handle_drive_command(command)
+
     def handle_drive_command(self, command):
         # Handle the driving commands based on w/a/s/d
         if command == "w":  # Move forward
@@ -204,11 +235,13 @@ class CombinedCar:
                         if data:
                             logging.debug(f"Received data: {data}")
                             if data in self.command_map:
-                                self.handle_drive_command(self.command_map[data])
+                                self.handle_command(self.command_map[data])
                             elif data == "0":
                                 self.PWM.setMotorModel(0, 0, 0, 0)
                                 self.direction = "stopped"
                                 logging.info("Received stop command")
+                            elif data == "scan":
+                                self.handle_command("scan")
 
                             # Prepare car status
                             car_status = self.get_car_status()

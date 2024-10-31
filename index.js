@@ -1,11 +1,10 @@
-// Assuming this code is part of your ElectronJS renderer process
 document.addEventListener("keydown", updateKey);
 document.addEventListener("keyup", resetKey);
 
-const net = require('net'); // Make sure Node integration is enabled in Electron
+const net = require('net'); 
 
 var server_port = 65434;
-var server_addr = "192.168.10.59"; // the IP address of your Raspberry Pi
+var server_addr = "192.168.10.59"; 
 
 // Global variables
 let client = null;
@@ -186,6 +185,11 @@ function processData(data) {
     }
 }
 
+function sendScanRequest() {
+    send_data("scan"); 
+    log('info', 'Scan request sent to server');
+}
+
 // For detecting which key is being pressed: W, A, S, D
 function updateKey(event) {
     keyPressed = true; // Set keyPressed to true when a key is pressed
@@ -206,6 +210,9 @@ function updateKey(event) {
         case "KeyD":
             document.getElementById("rightArrow").style.color = "green";
             send_data("68"); // Send D key code
+            break;
+        case "KeyX":  // Trigger scan with the X key
+            sendScanRequest();
             break;
         default:
             // Do nothing for other keys
